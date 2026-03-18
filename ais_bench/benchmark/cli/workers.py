@@ -17,7 +17,7 @@ from ais_bench.benchmark.runners import LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLApiInferTask, OpenICLInferTask
 from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
 from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
-from ais_bench.benchmark.cli.utils import fill_model_path_if_datasets_need
+from ais_bench.benchmark.cli.utils import clear_repeat_tasks
 from ais_bench.benchmark.utils.file.file import load_jsonl, dump_jsonl
 
 logger = AISLogger()
@@ -69,6 +69,7 @@ class Infer(BaseWorker):
         partitioner = PARTITIONERS.build(cfg.infer.partitioner)
         logger.info("Starting inference tasks...")
         tasks = partitioner(cfg)
+        tasks = clear_repeat_tasks(tasks)
 
         # update tasks cfg before run
         self._update_tasks_cfg(tasks, cfg)
@@ -162,6 +163,7 @@ class JudgeInfer(BaseWorker):
         logger.info("Starting inference tasks...")
         self._cfg_pre_process(cfg)
         tasks = partitioner(cfg)
+        tasks = clear_repeat_tasks(tasks)
 
         # delete the tasks without judge_infer_cfg
         new_tasks = []
@@ -233,6 +235,8 @@ class JudgeInfer(BaseWorker):
 
         # update judge cfgs to model cfgs and data
         for task in tasks:
+            task["datasets"] = copy.deepcopy(task["datasets"])
+            task["models"] = copy.deepcopy(task["models"])
             task["datasets"][0][0]["predictions_path"] = osp.join(cfg.judge_infer.partitioner.out_dir, task["models"][0]["abbr"], f'{self.org_dataset_abbrs[task["datasets"][0][0]["abbr"]]}.jsonl')
             if not osp.exists(task["datasets"][0][0]["predictions_path"]):
                 raise PredictionInvalidException(TMAN_CODES.UNKNOWN_ERROR, f"Predictions path {task['datasets'][0][0]['predictions_path']} does not exist.")
@@ -288,6 +292,7 @@ class Eval(BaseWorker):
         self._cfg_pre_process(cfg)
 
         tasks = partitioner(cfg)
+        tasks = clear_repeat_tasks(tasks)
 
         # Update tasks cfg before run
         self._update_tasks_cfg(tasks, cfg)
@@ -321,6 +326,7 @@ class Eval(BaseWorker):
         # Replace default model config to judge model config
         self.judge_result_paths = {}
         for task in tasks:
+            task["datasets"] = copy.deepcopy(task["datasets"])
             if task["datasets"][0][0].get("judge_infer_cfg"):
                 task["datasets"][0][0].pop("judge_infer_cfg")
 

@@ -28,7 +28,6 @@ def extract_options_from_question(question_text:str):
 
         matches = re.findall(pattern, options_part)
         for letter, content in matches:
-            # 清理内容：移除末尾的句点（如果存在）
             content = content.strip()
             if content.endswith("."):
                 content = content[:-1]
